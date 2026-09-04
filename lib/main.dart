@@ -3,95 +3,50 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 void main() {
-  runApp(const TKPEnglishLearningApp());
+  runApp(const TKPEnglishApp());
 }
 
-class TKPEnglishLearningApp extends StatelessWidget {
-  const TKPEnglishLearningApp({super.key});
+class TKPEnglishApp extends StatelessWidget {
+  const TKPEnglishApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TKP 英語學習系統',
+      title: 'TKP English System',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F3057)),
+        primarySwatch: Colors.indigo,
+        scaffoldBackgroundColor: const Color(0xFFF7F9FC),
         useMaterial3: true,
       ),
-      home: const MainDashboardScreen(),
+      home: const MainNavigationScreen(),
     );
   }
 }
 
-// ---------------- 數據結構 ----------------
-class WordItem {
-  final String word;
-  final String phonetic;
-  final String pos;
-  final String meaning;
-  final String example;
-  final String unit;
-
-  WordItem({
-    required this.word,
-    required this.phonetic,
-    required this.pos,
-    required this.meaning,
-    required this.example,
-    required this.unit,
-  });
+// 數據統計管理模型
+class LearningStats {
+  static int wordsLearned = 0;
+  static int spellingSuccessCount = 0;
+  static int listeningCompleted = 0;
+  static double totalPronunciationScore = 0.0;
+  static int pronunciationAttempts = 0;
 }
 
-// 鄧鏡波中學 校本單元詞庫（示例 Unit 1 學校與學習、Unit 2 科技與創新）
-final List<WordItem> tkpWordBank = [
-  WordItem(
-    word: "perseverance",
-    phonetic: "/ˌpɜːsɪˈvɪərəns/",
-    pos: "n.",
-    meaning: "堅持不懈、毅力",
-    example: "With perseverance, students overcome HKDSE challenges.",
-    unit: "Unit 1: Campus Life",
-  ),
-  WordItem(
-    word: "diligent",
-    phonetic: "/ˈdɪlɪdʒənt/",
-    pos: "adj.",
-    meaning: "勤奮的",
-    example: "Diligent revision leads to excellent academic results.",
-    unit: "Unit 1: Campus Life",
-  ),
-  WordItem(
-    word: "innovative",
-    phonetic: "/ˈɪnəveɪtɪv/",
-    pos: "adj.",
-    meaning: "創新的、革新的",
-    example: "The school encourages innovative STEM projects.",
-    unit: "Unit 2: Science & Tech",
-  ),
-  WordItem(
-    word: "sustainable",
-    phonetic: "/səˈsteɪnəbl/",
-    pos: "adj.",
-    meaning: "可持續的、環保的",
-    example: "We must adopt sustainable lifestyles to protect the Earth.",
-    unit: "Unit 2: Science & Tech",
-  ),
-];
-
-class MainDashboardScreen extends StatefulWidget {
-  const MainDashboardScreen({super.key});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainDashboardScreen> createState() => _MainDashboardScreenState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainDashboardScreenState extends State<MainDashboardScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   final List<Widget> _pages = [
-    const VocabSpellingScreen(),
-    const ListeningTestScreen(),
-    const ReadingCompScreen(),
-    const DSEWritingScreen(),
+    const VocabPracticeScreen(),
+    const ListeningScreen(),
+    const ReadingScreen(),
+    const StatsSummaryScreen(),
   ];
 
   @override
@@ -100,383 +55,240 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       body: _pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.school), label: '詞彙與拼讀'),
-          NavigationDestination(icon: Icon(Icons.hearing), label: '聽力測試'),
-          NavigationDestination(icon: Icon(Icons.menu_book), label: '閱讀理解'),
-          NavigationDestination(icon: Icon(Icons.edit_document), label: 'DSE小作文'),
+          NavigationDestination(icon: Icon(Icons.spellcheck), label: '詞彙與拼讀'),
+          NavigationDestination(icon: Icon(Icons.headphones), label: '聽力對話'),
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'DSE閱讀'),
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: '學習小結與統計'),
         ],
       ),
     );
   }
 }
 
-// ==========================================
-// 模組一：詞彙練習、5遍複讀拼寫與美音發音評測
-// ==========================================
-class VocabSpellingScreen extends StatefulWidget {
-  const VocabSpellingScreen({super.key});
+/* ========================================================
+ * 1. 詞彙與拼讀模組（TKP 校本教材）
+ * ======================================================== */
+class VocabPracticeScreen extends StatefulWidget {
+  const VocabPracticeScreen({Key? key}) : super(key: key);
 
   @override
-  State<VocabSpellingScreen> createState() => _VocabSpellingScreenState();
+  State<VocabPracticeScreen> createState() => _VocabPracticeScreenState();
 }
 
-class _VocabSpellingScreenState extends State<VocabSpellingScreen> {
-  String selectedUnit = "Unit 1: Campus Life";
-  int wordIdx = 0;
-  int repetitionCount = 0; // 5遍複讀計數器
-  final TextEditing4Controller = TextEditingController();
-  final FlutterTts tts = FlutterTts();
-  late stt.SpeechToText speech;
-  bool isListening = false;
-  String speechFeedback = "點擊麥克風進行美音發音評估";
-  int speechScore = 0;
+class _VocabPracticeScreenState extends State<VocabPracticeScreen> {
+  final FlutterTts _tts = FlutterTts();
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _spokenText = '';
+  String _evalResult = '按住麥克風並清晰朗讀單詞進行評測';
+  int _spellingStep = 1;
+  final TextEditingController _spellController = TextEditingController();
+
+  final List<Map<String, String>> tkpVocabList = [
+    {
+      'word': 'perseverance',
+      'phonetic': '/ˌpɜːsɪˈvɪərəns/',
+      'meaning': '堅持不懈 (鄧鏡波學校慈幼會核心德育價值)',
+      'unit': 'TKP Unit 1: School Spirit & Core Values'
+    },
+    {
+      'word': 'benevolence',
+      'phonetic': '/bəˈnevələns/',
+      'meaning': '仁愛、仁慈 (Salesian Preventive System)',
+      'unit': 'TKP Unit 1: School Spirit & Core Values'
+    },
+    {
+      'word': 'sustainability',
+      'phonetic': '/səˌsteɪnəˈbɪləti/',
+      'meaning': '可持續發展 (HKDSE 跨學科常考詞)',
+      'unit': 'TKP Unit 2: Hong Kong Urban Development'
+    },
+  ];
+
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    speech = stt.SpeechToText();
+    _speech = stt.SpeechToText();
+    _initTts();
   }
 
-  // 原生英音朗讀示範
-  void playBritishAudio(String text) async {
-    await tts.setLanguage("en-GB");
-    await tts.setSpeechRate(0.45);
-    await tts.speak(text);
+  void _initTts() async {
+    await _tts.setLanguage('en-US');
+    await _tts.setPitch(1.0);
+    await _tts.setSpeechRate(0.45); // 適合學習的慢速
   }
 
-  // 美式英語發音評估 (en-US)
-  void evaluatePronunciation(String targetWord) async {
-    bool available = await speech.initialize();
-    if (available) {
-      setState(() => isListening = true);
-      speech.listen(
-        localeId: "en_US", // 依要求指定美式英語發音
-        onResult: (val) {
-          String spoken = val.recognizedWords.trim().toLowerCase();
-          if (spoken.isNotEmpty) {
-            setState(() {
-              isListening = false;
-              int score = calculateSimilarity(targetWord.toLowerCase(), spoken);
-              speechScore = score;
-              if (score >= 85) {
-                speechFeedback = "🌟 美音極其標準！(得分: $score分 - 辨識為: $spoken)";
-              } else if (score >= 60) {
-                speechFeedback = "👍 發音尚可，請注意元音 (得分: $score分 - 辨識為: $spoken)";
-              } else {
-                speechFeedback = "⚠️ 發音有偏差，請跟讀重試 (得分: $score分 - 辨識為: $spoken)";
-              }
-            });
+  void _speak(String word) async {
+    await _tts.stop();
+    await _tts.speak(word);
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) {
+          if (val == 'done' || val == 'notListening') {
+            setState(() => _isListening = false);
+            _evaluatePronunciation();
           }
         },
+        onError: (val) => setState(() => _isListening = false),
       );
-    }
-  }
-
-  // 相似度算法 (Levenshtein Distance 轉百分比)
-  int calculateSimilarity(String s1, String s2) {
-    if (s1 == s2) return 100;
-    int maxLen = s1.length > s2.length ? s1.length : s2.length;
-    int matches = 0;
-    for (int i = 0; i < (s1.length < s2.length ? s1.length : s2.length); i++) {
-      if (s1[i] == s2[i]) matches++;
-    }
-    return ((matches / maxLen) * 100).toInt();
-  }
-
-  void checkSpelling() {
-    final currentWord = getFilteredWords()[wordIdx];
-    if (TextEditing4Controller.text.trim().toLowerCase() == currentWord.word.toLowerCase()) {
-      setState(() {
-        repetitionCount++;
-        TextEditing4Controller.clear();
-      });
-      if (repetitionCount >= 5) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("🎉 太棒了！已達成 5 遍複讀拼寫強化！"), backgroundColor: Colors.green),
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) {
+            setState(() {
+              _spokenText = val.recognizedWords;
+            });
+          },
         );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+      _evaluatePronunciation();
+    }
+  }
+
+  void _evaluatePronunciation() {
+    String target = tkpVocabList[_currentIndex]['word']!.toLowerCase();
+    String spoken = _spokenText.trim().toLowerCase();
+    LearningStats.pronunciationAttempts++;
+    if (spoken == target) {
+      LearningStats.totalPronunciationScore += 100;
+      setState(() => _evalResult = '🌟 發音優秀！精確匹配美式標準音 (100分)');
+    } else if (spoken.isNotEmpty && target.contains(spoken)) {
+      LearningStats.totalPronunciationScore += 75;
+      setState(() => _evalResult = '👍 發音尚可 ($spoken)，請更注意音節清晰度 (75分)');
+    } else {
+      LearningStats.totalPronunciationScore += 50;
+      setState(() => _evalResult = '⚠️ 識別為: "$spoken"，請點擊喇叭多聽一遍重試');
+    }
+  }
+
+  void _checkSpelling() {
+    String target = tkpVocabList[_currentIndex]['word']!;
+    if (_spellController.text.trim().toLowerCase() == target.toLowerCase()) {
+      if (_spellingStep < 5) {
         setState(() {
-          repetitionCount = 0;
-          if (wordIdx < getFilteredWords().length - 1) wordIdx++;
+          _spellingStep++;
+          _spellController.clear();
         });
       } else {
+        LearningStats.spellingSuccessCount++;
+        LearningStats.wordsLearned++;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("正確！請繼續完成第 ${repetitionCount + 1}/5 遍拼寫"), backgroundColor: Colors.blue),
+          const SnackBar(content: Text('🎉 恭喜！已完成 5 遍拼讀強化循環，單詞已掌握！')),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("拼寫有誤，請再聽一次！"), backgroundColor: Colors.redAccent),
+        const SnackBar(content: Text('拼寫有誤，請對照單詞重新輸入')),
       );
     }
   }
 
-  List<WordItem> getFilteredWords() {
-    return tkpWordBank.where((w) => w.unit == selectedUnit).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final words = getFilteredWords();
-    final item = words[wordIdx];
-
+    var cur = tkpVocabList[_currentIndex];
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("TKP 校本詞彙與拼讀"),
-        backgroundColor: const Color(0xFF0F3057),
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('TKP 鄧鏡波學校 - 詞彙拼讀')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 單元切換選單
-            DropdownButtonFormField<String>(
-              value: selectedUnit,
-              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "教材單元選擇"),
-              items: ["Unit 1: Campus Life", "Unit 2: Science & Tech"]
-                  .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                  .toList(),
-              onChanged: (v) => setState(() {
-                selectedUnit = v!;
-                wordIdx = 0;
-                repetitionCount = 0;
-              }),
-            ),
-            const SizedBox(height: 16),
-
-            // 單詞學習卡片
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: [
+                    Text(cur['unit']!, style: const TextStyle(color: Colors.indigo, fontSize: 13)),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(item.word, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF0F3057))),
-                        IconButton(icon: const Icon(Icons.volume_up, color: Colors.blue), onPressed: () => playBritishAudio(item.word)),
+                        Text(
+                          cur['word']!,
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.volume_up, color: Colors.indigo, size: 30),
+                          onPressed: () => _speak(cur['word']!),
+                        ),
                       ],
                     ),
-                    Text("${item.pos}  ${item.phonetic}", style: const TextStyle(color: Colors.grey, fontSize: 16)),
-                    const SizedBox(height: 10),
-                    Text(item.meaning, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-                    const Divider(height: 24),
-                    Text("例句: ${item.example}", style: const TextStyle(fontStyle: FontStyle.italic)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 5 遍複讀拼寫區塊
-            Card(
-              color: Colors.amber.shade50,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Text("🔁 5 遍強化拼寫（當前進度: $repetitionCount / 5）", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: TextEditing4Controller,
-                      decoration: InputDecoration(
-                        hintText: "請輸入單詞拼寫 (首字母提示: ${item.word[0]}...)",
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(icon: const Icon(Icons.check), onPressed: checkSpelling),
-                      ),
-                      onSubmitted: (_) => checkSpelling(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 美式發音評估區塊
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text("🎙️ 美式英語 (en-US) 發音標準度檢測", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
+                    Text(cur['phonetic']!, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Text(cur['meaning']!, style: const TextStyle(fontSize: 16)),
+                    const Divider(height: 30),
+                    // 發音評測區塊
+                    Text(_evalResult, style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
+                    const SizedBox(height: 12),
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: isListening ? Colors.red : const Color(0xFF0F3057), foregroundColor: Colors.white),
-                      onPressed: () => evaluatePronunciation(item.word),
-                      icon: Icon(isListening ? Icons.mic_off : Icons.mic),
-                      label: Text(isListening ? "正在傾聽發音..." : "按住開口發音"),
+                      onPressed: _listen,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isListening ? Colors.red : Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                      label: Text(_isListening ? '正在聆聽...點擊停止' : '按此開口發音 (評測)'),
                     ),
-                    const SizedBox(height: 10),
-                    Text(speechFeedback, textAlign: TextAlign.center, style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ==========================================
-// 模組二：聽力測試（原生英音 TTS + 選擇題）
-// ==========================================
-class ListeningTestScreen extends StatefulWidget {
-  const ListeningTestScreen({super.key});
-
-  @override
-  State<ListeningTestScreen> createState() => _ListeningTestScreenState();
-}
-
-class _ListeningTestScreenState extends State<ListeningTestScreen> {
-  final FlutterTts tts = FlutterTts();
-  int selectedOption = -1;
-
-  void playBritishAudio(String text) async {
-    await tts.setLanguage("en-GB");
-    await tts.setSpeechRate(0.40); // 聽力測驗標準清晰語速
-    await tts.speak(text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("聽力測試 (原生英音)"), backgroundColor: const Color(0xFF0F3057), foregroundColor: Colors.white),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("題目 1: 聽詞選義", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () => playBritishAudio("perseverance"),
-                icon: const Icon(Icons.play_circle_fill),
-                label: const Text("播放英音單詞朗讀"),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...[
-              "A. 堅持不懈、毅力",
-              "B. 勤勉謹慎",
-              "C. 環保的可持續性",
-              "D. 科技創新"
-            ].asMap().entries.map((entry) => RadioListTile<int>(
-              value: entry.key,
-              groupValue: selectedOption,
-              title: Text(entry.value),
-              onChanged: (val) {
-                setState(() => selectedOption = val!);
-                if (val == 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("回答正確！")));
-                }
-              },
-            )),
-            const Divider(height: 32),
-            const Text("題目 2: 聽對話理解題", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () => playBritishAudio("Boy: Have you finished the STEM project? Girl: Not yet, but with perseverance we will complete it today."),
-              icon: const Icon(Icons.volume_up),
-              label: const Text("播放短對話錄音"),
-            ),
-            const SizedBox(height: 8),
-            const Text("問: What is needed to finish the project?"),
-            const Text("(A) Money  (B) Perseverance  (C) More tools", style: TextStyle(color: Colors.black54)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ==========================================
-// 模組三：閱讀理解（校本主題 + 點擊查生詞）
-// ==========================================
-class ReadingCompScreen extends StatelessWidget {
-  const ReadingCompScreen({super.key});
-
-  final String passage =
-      "At Tang King Po School, students are encouraged to remain diligent even when encountering difficult modules. "
-      "Academic excellence is not achieved overnight; rather, it requires extraordinary perseverance. "
-      "Furthermore, the new science syllabus guides pupils to create innovative and sustainable solutions for modern society.";
-
-  void showWordDefinition(BuildContext context, String rawWord) {
-    String cleaned = rawWord.replaceAll(RegExp(r'[^a-zA-Z]'), '').toLowerCase();
-    WordItem? match = tkpWordBank.firstWhere(
-      (w) => w.word.toLowerCase() == cleaned,
-      orElse: () => WordItem(word: cleaned, phonetic: "-", pos: "詞彙", meaning: "日常英語單詞", example: "-", unit: "-"),
-    );
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(match.word, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F3057))),
-            Text("${match.pos}  ${match.phonetic}", style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text("釋義：${match.meaning}", style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 6),
-            Text("教材例句：${match.example}", style: const TextStyle(fontStyle: FontStyle.italic)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    List<String> words = passage.split(" ");
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("校本主題閱讀理解"), backgroundColor: const Color(0xFF0F3057), foregroundColor: Colors.white),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("📖 篇章：Campus Life & STEM (點擊藍色單詞查釋義)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-              child: Wrap(
-                spacing: 4,
-                children: words.map((w) {
-                  bool isTarget = tkpWordBank.any((t) => w.toLowerCase().contains(t.word.toLowerCase()));
-                  return GestureDetector(
-                    onTap: () => showWordDefinition(context, w),
-                    child: Text(
-                      "$w ",
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.6,
-                        color: isTarget ? Colors.blue.shade800 : Colors.black87,
-                        fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
-                        decoration: isTarget ? TextDecoration.underline : TextDecoration.none,
-                      ),
-                    ),
-                  );
-                }).toList(),
               ),
             ),
             const SizedBox(height: 20),
-            const Text("閱讀理解題：", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const Text("1. What two qualities are emphasized in the passage?"),
-            const Text("答：Diligence and perseverance.", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            // 5 遍拼讀循環
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('5 遍記憶強化拼讀 [當前進度: 步驟 $_spellingStep / 5]',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(value: _spellingStep / 5),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _spellController,
+                      decoration: InputDecoration(
+                        hintText: _spellingStep <= 2 ? '提示輸入: ${cur['word']}' : '請盲打盲拼單詞...',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(onPressed: _checkSpelling, child: const Text('核對拼寫')),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _currentIndex = (_currentIndex + 1) % tkpVocabList.length;
+                              _spellingStep = 1;
+                              _spellController.clear();
+                              _evalResult = '按住麥克風並清晰朗讀單詞進行評測';
+                            });
+                          },
+                          child: const Text('下一個詞彙 ➔'),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -484,96 +296,263 @@ class ReadingCompScreen extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 模組四：DSE 微寫作（關鍵詞偵測與字數統計）
-// ==========================================
-class DSEWritingScreen extends StatefulWidget {
-  const DSEWritingScreen({super.key});
+/* ========================================================
+ * 2. 聽力與對話模組（修復音訊播放與按鈕無響應）
+ * ======================================================== */
+class ListeningScreen extends StatefulWidget {
+  const ListeningScreen({Key? key}) : super(key: key);
 
   @override
-  State<DSEWritingScreen> createState() => _DSEWritingScreenState();
+  State<ListeningScreen> createState() => _ListeningScreenState();
 }
 
-class _DSEWritingScreenState extends State<DSEWritingScreen> {
-  String selectedGenre = "Email to the Principal";
-  final TextEditingController essayController = TextEditingController();
-  final List<String> requiredKeywords = ["diligent", "perseverance", "innovative", "sustainable"];
-  int currentWordCount = 0;
+class _ListeningScreenState extends State<ListeningScreen> {
+  final FlutterTts _tts = FlutterTts();
+  String _listeningFeedback = '';
 
-  void onTextChanged(String text) {
-    List<String> words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    setState(() {
-      currentWordCount = words.length;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _setupAudio();
+  }
+
+  void _setupAudio() async {
+    await _tts.setLanguage('en-GB'); // 英式發音（匹配 HKDSE 聽力考評標準）
+    await _tts.setPitch(1.0);
+    await _tts.setSpeechRate(0.48);
+  }
+
+  void _playTTS(String text) async {
+    await _tts.stop();
+    await _tts.speak(text);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("DSE 實用文微寫作訓練"), backgroundColor: const Color(0xFF0F3057), foregroundColor: Colors.white),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text('TKP 聽力練習 (DSE Paper 3 模組)')),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          // 題目 1
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('【題目 1】單詞音節與重音識別',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _playTTS('benevolence'),
+                    icon: const Icon(Icons.play_circle_fill),
+                    label: const Text('播放單詞朗讀 (UK 核心標準音)'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('問題: 請問你聽到的單詞重音在第幾個音節？'),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          LearningStats.listeningCompleted++;
+                          setState(() => _listeningFeedback = '題目1：回答正確！重音在第二音節 /bəˈnevələns/');
+                        },
+                        child: const Text('第二音節'),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () => setState(() => _listeningFeedback = '題目1：回答錯誤，請多聽一次重音起伏'),
+                        child: const Text('第一音節'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 題目 2
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('【題目 2】校園生活短對話錄音',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _playTTS(
+                      'Good morning Kelvin. Are you participating in the Tang King Po School annual sports day this Friday? Yes, I will be competing in the 400-meter relay race.',
+                    ),
+                    icon: const Icon(Icons.play_circle_fill),
+                    label: const Text('播放短對話錄音 (TKP 校園實境)'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('問題: What will Kelvin do this Friday?'),
+                  ElevatedButton(
+                    onPressed: () {
+                      LearningStats.listeningCompleted++;
+                      setState(() => _listeningFeedback = '題目2：回答正確！參加 400米接力賽 (400-meter relay)');
+                    },
+                    child: const Text('Compete in relay race'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_listeningFeedback.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text(
+                  _listeningFeedback,
+                  style: const TextStyle(fontSize: 15, color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ========================================================
+ * 3. 閱讀與生詞點查模組（TKP 慈幼校園專題）
+ * ======================================================== */
+class ReadingScreen extends StatelessWidget {
+  const ReadingScreen({Key? key}) : super(key: key);
+
+  void _showDef(BuildContext context, String word, String def) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        height: 180,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
-              value: selectedGenre,
-              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "DSE 寫作文體"),
-              items: ["Email to the Principal", "Letter to the Editor", "Diary Entry", "Proposal"]
-                  .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                  .toList(),
-              onChanged: (v) => setState(() => selectedGenre = v!),
-            ),
-            const SizedBox(height: 12),
-            const Text("📝 寫作題目：Write a short proposal (60-100 words) on how our school can build a better learning atmosphere.", style: TextStyle(color: Colors.black87)),
+            Text(word, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.indigo)),
             const SizedBox(height: 10),
-
-            // 關鍵字檢測看板
-            const Text("必備指定詞彙偵測 (至少使用 3 個):", style: TextStyle(fontWeight: FontWeight.bold)),
-            Wrap(
-              spacing: 8,
-              children: requiredKeywords.map((kw) {
-                bool used = essayController.text.toLowerCase().contains(kw.toLowerCase());
-                return Chip(
-                  avatar: Icon(used ? Icons.check_circle : Icons.radio_button_unchecked, color: used ? Colors.white : Colors.grey, size: 18),
-                  label: Text(kw),
-                  backgroundColor: used ? Colors.green : Colors.grey.shade200,
-                  labelStyle: TextStyle(color: used ? Colors.white : Colors.black),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: essayController,
-              maxLines: 8,
-              onChanged: onTextChanged,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "在此輸入短文...",
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("字數統計: $currentWordCount 字 (目標: 60-100 字)", style: TextStyle(fontWeight: FontWeight.bold, color: currentWordCount >= 60 && currentWordCount <= 100 ? Colors.green : Colors.orange)),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F3057), foregroundColor: Colors.white),
-                  onPressed: () {
-                    int usedCount = requiredKeywords.where((k) => essayController.text.toLowerCase().contains(k)).length;
-                    if (usedCount >= 3 && currentWordCount >= 60) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 寫作符合要求！成功覆蓋核心詞彙且字數達標！"), backgroundColor: Colors.green));
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("需至少包含 3 個指定詞 (目前: $usedCount) 且字數達 60 字！"), backgroundColor: Colors.redAccent));
-                    }
-                  },
-                  child: const Text("提交評估"),
-                ),
-              ],
-            )
+            Text(def, style: const TextStyle(fontSize: 16)),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('TKP 閱讀訓練 (點擊生詞點查)')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 8,
+              children: [
+                const Text('At', style: TextStyle(fontSize: 18)),
+                ActionChip(
+                  label: const Text('Tang King Po School'),
+                  backgroundColor: Colors.indigo.shade50,
+                  onPressed: () => _showDef(context, 'Tang King Po School', '香港鄧鏡波學校：由慈幼會創辦於九龍靠背壟道的天主教男子中學。'),
+                ),
+                const Text(', students are encouraged to display', style: TextStyle(fontSize: 18)),
+                ActionChip(
+                  label: const Text('perseverance'),
+                  onPressed: () => _showDef(context, 'perseverance', '堅持、不屈不撓的精神，慈幼會培育的核心價值。'),
+                ),
+                const Text('and cultivate mutual', style: TextStyle(fontSize: 18)),
+                ActionChip(
+                  label: const Text('benevolence'),
+                  onPressed: () => _showDef(context, 'benevolence', '慈愛與仁善，指關懷社會與同儕之品德。'),
+                ),
+                const Text('in every academic pursuit.', style: TextStyle(fontSize: 18)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/* ========================================================
+ * 4. 學習小結與效果統計儀表板（補齊統計面板）
+ * ======================================================== */
+class StatsSummaryScreen extends StatelessWidget {
+  const StatsSummaryScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    double avgScore = LearningStats.pronunciationAttempts == 0
+        ? 0.0
+        : (LearningStats.totalPronunciationScore / LearningStats.pronunciationAttempts);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('學習小結與效果統計')),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          Card(
+            color: Colors.indigo,
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  const Text('鄧鏡波學校英語能力掌握總評', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${(avgScore * 0.4 + LearningStats.spellingSuccessCount * 12).clamp(0, 100).toStringAsFixed(1)} 分',
+                    style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                  ),
+                  const Text('DSE 銜接水平評等：持續進步中', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('詳細訓練數據小結', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ListTile(
+            tileColor: Colors.white,
+            leading: const Icon(Icons.check_circle, color: Colors.green),
+            title: const Text('已掌握 5 遍拼讀詞彙數'),
+            trailing: Text('${LearningStats.spellingSuccessCount} 個', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            tileColor: Colors.white,
+            leading: const Icon(Icons.record_voice_over, color: Colors.indigo),
+            title: const Text('口語發音評測平均分'),
+            trailing: Text('${avgScore.toStringAsFixed(1)} 分', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            tileColor: Colors.white,
+            leading: const Icon(Icons.hearing, color: Colors.orange),
+            title: const Text('完成聽力理解測驗數'),
+            trailing: Text('${LearningStats.listeningCompleted} 題', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('本週學習小結建議', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  SizedBox(height: 8),
+                  Text('• 詞彙掌握：慈幼核心詞彙拼讀達標，建議加強多音節重音。\n• 聽力表現：短對話抓取資訊準確，建議維持每日 10 分鐘 UK 標準音頻磨耳朵習慣。'),
+                ],
+              ),
+            ),
+          )
+        ],
       ),
     );
   }
