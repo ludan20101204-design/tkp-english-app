@@ -32,9 +32,11 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      # 使用標準建置參數指定 min-sdk-version 為 21
+      # 透過 Gradle 專案屬性傳入 minSdkVersion 參數
       - name: Build APK
-        run: flutter build apk --release --min-sdk-version 21
+        run: flutter build apk --release --extra-front-end-options=--no-sound-null-safety || flutter build apk --release --dart-define=minSdkVersion=21
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.project.minSdkVersion=21"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
