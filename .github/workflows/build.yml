@@ -29,10 +29,16 @@ jobs:
         run: |
           flutter create . --org hk.edu.tkp --project-name tkp_english
 
-      # 精確將 flutter.minSdkVersion 替換為 21，符合 speech_to_text 要求
+      # 修復 1：提升最低 Android 版本為 21
       - name: Fix Android minSdkVersion
         run: |
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+
+      # 修復 2：注入麥克風與錄音權限（解決發音按鍵沒反應）
+      - name: Inject Android Permissions
+        run: |
+          sed -i '/<manifest xmlns:android/a \    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.BLUETOOTH" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/a \        <queries>\n            <intent>\n                <action android:name="android.speech.RecognitionService" />\n            </intent>\n            <intent>\n                <action android:name="android.intent.action.TTS_SERVICE" />\n            </intent>\n        </queries>' android/app/src/main/AndroidManifest.xml
 
       - name: Get Dependencies
         run: flutter pub get
