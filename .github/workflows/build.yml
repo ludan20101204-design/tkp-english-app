@@ -29,6 +29,12 @@ jobs:
         run: |
           flutter create . --org hk.edu.tkp --project-name tkp_english
 
+      # 修復 minSdkVersion：提升至 21 以滿足語音辨識套件要求
+      - name: Upgrade minSdkVersion to 21
+        run: |
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion [0-9]*/minSdkVersion 21/g' android/app/build.gradle || true
+
       - name: Get Dependencies
         run: flutter pub get
 
