@@ -29,14 +29,16 @@ jobs:
         run: |
           flutter create . --org hk.edu.tkp --project-name tkp_english
 
+      # 精確將 flutter.minSdkVersion 替換為 21，符合 speech_to_text 要求
+      - name: Fix Android minSdkVersion
+        run: |
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+
       - name: Get Dependencies
         run: flutter pub get
 
-      # 透過 Gradle 專案屬性傳入 minSdkVersion 參數
       - name: Build APK
-        run: flutter build apk --release --extra-front-end-options=--no-sound-null-safety || flutter build apk --release --dart-define=minSdkVersion=21
-        env:
-          GRADLE_OPTS: "-Dorg.gradle.project.minSdkVersion=21"
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
